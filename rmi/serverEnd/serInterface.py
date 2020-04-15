@@ -1,4 +1,4 @@
-class findstuInter:
+class greetInter:
     def hi(self):
         pass
 

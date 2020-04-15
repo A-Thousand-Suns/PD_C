@@ -1,51 +1,56 @@
 import socket
 import threading
-import os
+import pickle
 
 class assist:
-    def __init__(self):
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.bind(('127.0.0.1', 6666))
-        self.s.listen(10)
-        self.conn, self.addr = self.s.accept()
+    def __init__(self, conn):
+        self.conn = conn
 
     def connState(self):
-        if (self.s):
+        if (self.conn):
             return True
         else:
             return False
 
-    def sendInter(self):
-        path = 'serInterface.py'
-        filesize = str(os.path.getsize(path))
-        print("发现接口文件,大小为：", filesize)
-        self.conn.send(filesize.encode('utf-8'))
-        mesg = self.conn.recv(1024)
-        print(mesg.decode('utf-8'))
-        print('开始发送接口文件')
-        file = open(path, 'rb')
-        for i in file:
-            self.conn.send(i)
-        file.close()
-
     def commu(self):
-        mesg = self.conn.recv(1024).decode('utf-8')
         sCommu = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sCommu.connect(('127.0.0.1', 6667))
 
-        if (mesg == 'findstu.hi'):
-            sCommu.send(mesg.encode('utf-8'))
+        while True:
+            try:
+                mesg = pickle.loads(self.conn.recv(1024))
+            except EOFError:
+                mesg={'noOption':[0]}
+
+            print(mesg)
+            option = list(mesg.keys())[0]
+            sCommu.send(pickle.dumps(mesg))
+
+            if (option == 'close'):
+                self.conn.close()
+                print('服务器代理断开与客户端连接')
+                break
+
             result = sCommu.recv(1024).decode('utf-8')
             self.conn.send(result.encode('utf-8'))
 
-def deal():
-    assidObj = assist()
-    assidObj.sendInter()
+        sCommu.close()
+        print('服务器代理断开与服务器连接')
+
+
+
+
+def deal(conn):
+    assidObj = assist(conn)
     assidObj.commu()
 
 if (__name__ == '__main__'):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('127.0.0.1', 6666))
+    s.listen(10)
     while True:
-        t = threading.Thread(target=deal)
+        conn, addr = s.accept()
+        t = threading.Thread(target=deal, args=(conn,))
         t.run()
 
 
